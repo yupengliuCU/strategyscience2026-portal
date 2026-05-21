@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Cloudflare Pages / Wrangler local
+.wrangler/
+.dev.vars
+.dev.vars.*
+wrangler.toml.local
+
+# Logs
+*.log
+
+# Misc
+.env
+.env.*
+!.env.example
+
+# Claude Code (machine-specific)
+.claude/settings.local.json
