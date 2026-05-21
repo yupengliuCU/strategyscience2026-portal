@@ -1,0 +1,9 @@
+# Don't cache HTML, JS, or CSS while we're still iterating on the portal.
+# Edge cache is still allowed (Pages overrides this for its own CDN), but the
+# browser will always revalidate before reusing a stored copy.
+
+/*
+  Cache-Control: no-store
+
+/assets/*
+  Cache-Control: no-store
