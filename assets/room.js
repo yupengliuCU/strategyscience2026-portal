@@ -15,6 +15,18 @@ const state = {
   refreshTimer: null,
 };
 
+function detectRoom() {
+  // 1. Pathname like /room/B or /room/B/ — primary source
+  const m = location.pathname.match(/\/room\/([A-Za-z])\/?$/);
+  if (m) return m[1].toUpperCase();
+  // 2. Query string ?room=B — fallback (works if Pages preserves search)
+  const params = new URLSearchParams(location.search);
+  const q = params.get("room");
+  if (q) return q.toUpperCase();
+  // 3. Default
+  return "A";
+}
+
 main().catch((err) => {
   console.error(err);
   document.getElementById("room-meta").innerHTML =
@@ -22,8 +34,7 @@ main().catch((err) => {
 });
 
 async function main() {
-  const params = new URLSearchParams(location.search);
-  const roomLetter = (params.get("room") || "A").toUpperCase();
+  const roomLetter = detectRoom();
   if (!ROOMS[roomLetter]) {
     document.getElementById("room-meta").innerHTML =
       `<h1>Unknown room "${escapeHtml(roomLetter)}"</h1><p class="room-date">Use /room/A, /room/B, /room/C, or /room/D.</p>`;
