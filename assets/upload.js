@@ -116,10 +116,13 @@ function paperCard(p) {
       </div>
       <div class="paper-actions">
         ${renderUploadState(p, uploaded)}
-        <label class="btn ${uploaded ? "btn-secondary" : ""}" data-role="picker">
-          ${uploaded ? "Replace" : "Upload slides"}
-          <input class="file-input" type="file" accept=".pdf,.ppt,.pptx,.key" data-paper="${p.id}" />
-        </label>
+        <div class="btn-row">
+          <label class="btn ${uploaded ? "btn-secondary" : ""}" data-role="picker">
+            ${uploaded ? "Replace" : "Upload slides"}
+            <input class="file-input" type="file" accept=".pdf,.ppt,.pptx,.key" data-paper="${p.id}" />
+          </label>
+          ${uploaded ? `<button type="button" class="btn btn-danger" data-role="delete" data-paper="${p.id}">Delete</button>` : ""}
+        </div>
         <div class="progress" data-role="progress-host" hidden>
           <div class="progress-bar" data-role="progress-bar"></div>
         </div>
@@ -149,6 +152,49 @@ function attachUploadHandlers(p) {
     await handleUpload(p, file, card);
     input.value = ""; // reset so user can re-select same file
   });
+  const delBtn = card.querySelector(`[data-role="delete"]`);
+  if (delBtn) {
+    delBtn.addEventListener("click", () => handleDelete(p, card));
+  }
+}
+
+async function handleDelete(paper, card) {
+  const ok = window.confirm(
+    `Delete the uploaded slides for ${paper.id}?\n\n"${paper.title}"\n\nThis can't be undone, but you can upload again afterward.`,
+  );
+  if (!ok) return;
+
+  const errEl = card.querySelector(`[data-role="error"]`);
+  const delBtn = card.querySelector(`[data-role="delete"]`);
+  errEl.hidden = true;
+  errEl.textContent = "";
+  if (delBtn) {
+    delBtn.disabled = true;
+    delBtn.textContent = "Deleting…";
+  }
+
+  try {
+    const res = await fetch("/api/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paperId: paper.id }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `Delete failed (${res.status})`);
+    }
+    delete state.uploads[paper.id];
+    replaceCard(paper);
+    toast(`Deleted slides for ${paper.id}`, "ok");
+  } catch (err) {
+    console.error(err);
+    showError(errEl, err.message || "Delete failed. Try again.");
+    toast("Delete failed", "err");
+    if (delBtn) {
+      delBtn.disabled = false;
+      delBtn.textContent = "Delete";
+    }
+  }
 }
 
 async function handleUpload(paper, file, card) {

@@ -265,6 +265,27 @@ a:hover { text-decoration-thickness: 2px; }
   background: var(--ink);
   color: var(--paper);
 }
+.btn.btn-danger {
+  background: transparent;
+  color: #9A2A1F;
+  border-color: #D9B7B3;
+}
+.btn.btn-danger:hover {
+  background: #9A2A1F;
+  color: var(--paper);
+  border-color: #9A2A1F;
+}
+.btn-row {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+@media (max-width: 640px) {
+  .btn-row { justify-content: stretch; }
+  .btn-row .btn { flex: 1; }
+}
 .btn .file-input {
   position: absolute;
   width: 1px; height: 1px;
@@ -380,6 +401,37 @@ a:hover { text-decoration-thickness: 2px; }
   color: var(--ink-soft);
 }
 .room-nav a.active {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.portal-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.portal-nav-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-mute);
+  margin-right: 4px;
+}
+.portal-nav a {
+  padding: 5px 11px;
+  font-family: var(--mono);
+  font-size: 12px;
+  text-decoration: none;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  color: var(--ink-soft);
+  background: var(--paper);
+  transition: background 120ms, color 120ms, border-color 120ms;
+}
+.portal-nav a:hover {
   background: var(--ink);
   color: var(--paper);
   border-color: var(--ink);
