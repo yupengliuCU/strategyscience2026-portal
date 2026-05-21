@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Presenter Portal · 2026 Strategy Science Conference</title>
+  <meta name="description" content="Upload slides for the 2026 Strategy Science Conference, hosted at the Leeds School of Business, CU Boulder, May 28–30." />
+  <meta name="robots" content="noindex" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <main class="wrap">
+    <header class="site-header">
+      <p class="eyebrow">2026 Strategy Science Conference</p>
+      <h1>Presenter slide portal</h1>
+      <p class="lead">
+        Upload your slides here and they'll be ready when you walk into the room — no USB sticks, no email scrambles.
+        Drop in your file whenever it's ready; even right before your session is fine.
+        Accepted: <code style="font-family: var(--mono); font-size: 13px;">.pdf .ppt .pptx .key</code>, up to 100 MB.
+      </p>
+      <p class="meta">May 28–30, 2026 · Leeds School of Business · CU Boulder</p>
+    </header>
+
+    <section class="jump" aria-label="Jump to session">
+      <div id="jump-content"></div>
+    </section>
+
+    <section id="sessions" aria-label="Sessions">
+      <p class="skeleton" id="loading-state">Loading program…</p>
+    </section>
+
+    <footer class="site-footer">
+      <p>
+        Built for the 2026 SSC organizers. Need help? Email
+        <a href="mailto:strategyscience2026@colorado.edu">strategyscience2026@colorado.edu</a>.
+      </p>
+    </footer>
+  </main>
+
+  <div class="toast-host" id="toasts" aria-live="polite"></div>
+
+  <script type="module" src="/assets/upload.js"></script>
+</body>
+</html>
