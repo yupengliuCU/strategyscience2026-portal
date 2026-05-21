@@ -60,83 +60,71 @@ function startRefreshLoop() {
 
 function renderHeader() {
   const room = ROOMS[state.room];
-  const pos = conferencePosition();
-  const dateLabel = posDateLabel(pos);
+  const dt = denverDateTime();
   document.getElementById("room-meta").innerHTML = `
     <p class="room-tag">
       Room
       <span class="big">${state.room}</span>
       · ${room.name} · ${room.building}
     </p>
-    <h1>${dateLabel.title}</h1>
-    <p class="room-date">${dateLabel.subtitle}</p>
+    <h1>Friday May 29 – Saturday May 30, 2026</h1>
+    <p class="room-date">Mountain Time · now ${dt.hhmm}</p>
   `;
 }
 
-function posDateLabel(pos) {
-  if (pos.kind === "off") {
-    return {
-      title: "Conference is not in session today",
-      subtitle: `Today is ${pos.denver.date}. The conference runs May 28–30, 2026.`,
-    };
-  }
-  const day = pos.day;
-  if (day === "fri") {
-    return { title: "Friday, May 29, 2026", subtitle: `Mountain Time · now ${pos.denver.hhmm}` };
-  }
-  return { title: "Saturday, May 30, 2026", subtitle: `Mountain Time · now ${pos.denver.hhmm}` };
-}
-
-function todaysSessions() {
-  const pos = conferencePosition();
-  if (pos.kind === "off") return { pos, sessions: [] };
+function roomSessions() {
   const trackIdx = TRACK_LETTER.indexOf(state.room) + 1;
-  const periods = pos.day === "fri" ? [1, 2, 3] : [4, 5];
-  const sessions = state.sessions
-    .filter((s) => s.track === trackIdx && periods.includes(s.period))
+  return state.sessions
+    .filter((s) => s.track === trackIdx)
     .sort((a, b) => a.period - b.period);
-  return { pos, sessions };
 }
 
 function renderSessions() {
   const root = document.getElementById("sessions");
-  const { pos, sessions } = todaysSessions();
-
-  if (pos.kind === "off") {
-    root.innerHTML = `
-      <div class="room-empty">
-        <p>The conference isn't running today.</p>
-        <p style="font-family: var(--mono); font-size: 13px; margin-top: 8px;">
-          May 29 (Fri) sessions: S1–S3 · May 30 (Sat) sessions: S4–S5
-        </p>
-      </div>
-    `;
-    return;
-  }
+  const sessions = roomSessions();
 
   if (!sessions.length) {
-    root.innerHTML = `<div class="room-empty">No sessions scheduled in this room today.</div>`;
+    root.innerHTML = `<div class="room-empty">No sessions scheduled in this room.</div>`;
     return;
   }
 
+  const pos = conferencePosition();
+  const liveCheck = pos.kind !== "off"; // only highlight now/past when actually on a conference day
   const nowHHMM = pos.denver.hhmm;
+  const today = pos.denver.date;
 
-  root.innerHTML = sessions
-    .map((s) => {
-      const t = s.time;
-      const status = sessionStatus(t, nowHHMM);
-      return `
-        <article class="session-card ${status === "now" ? "is-now" : status === "past" ? "is-past" : ""}">
-          <p class="when">${t.label.replace(/^\w+ \w+ \d+ · /, "")}</p>
-          <h2>${escapeHtml(s.theme)}</h2>
-          ${s.description ? `<p class="desc">${escapeHtml(s.description)}</p>` : ""}
-          <ol class="paper-list">
-            ${s.papers.map((p, i) => paperRow(p, i + 1)).join("")}
-          </ol>
-        </article>
-      `;
-    })
-    .join("");
+  // Group sessions by day
+  const byDay = { fri: [], sat: [] };
+  for (const s of sessions) byDay[s.time.day].push(s);
+
+  const dayBlock = (label, list) => {
+    if (!list.length) return "";
+    return `
+      <h2 class="day-heading">${label}</h2>
+      ${list.map((s) => sessionCard(s, liveCheck, nowHHMM, today)).join("")}
+    `;
+  };
+
+  root.innerHTML = `
+    ${dayBlock("Friday · May 29", byDay.fri)}
+    ${dayBlock("Saturday · May 30", byDay.sat)}
+  `;
+}
+
+function sessionCard(s, liveCheck, nowHHMM, today) {
+  const t = s.time;
+  const status = liveCheck && t.date === today ? sessionStatus(t, nowHHMM) : "neutral";
+  const cls = status === "now" ? "is-now" : status === "past" ? "is-past" : "";
+  return `
+    <article class="session-card ${cls}">
+      <p class="when">${t.label.replace(/^\w+ \w+ \d+ · /, "")}</p>
+      <h2>${escapeHtml(s.theme)}</h2>
+      ${s.description ? `<p class="desc">${escapeHtml(s.description)}</p>` : ""}
+      <ol class="paper-list">
+        ${s.papers.map((p, i) => paperRow(p, i + 1)).join("")}
+      </ol>
+    </article>
+  `;
 }
 
 function sessionStatus(time, nowHHMM) {
