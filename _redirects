@@ -1,1 +1,1 @@
-/room/:room   /room.html?room=:room   200
+/room/*   /room.html   200
