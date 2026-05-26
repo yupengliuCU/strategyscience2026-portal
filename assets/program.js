@@ -43,7 +43,11 @@ export function letterFromTrack(track) {
 let _programCache = null;
 export async function loadProgram() {
   if (_programCache) return _programCache;
-  const res = await fetch(PROGRAM_URL, { cache: "force-cache" });
+  // Always fetch fresh — title / author / abstract edits in the main-site
+  // repo need to propagate the next time anyone loads the portal. The
+  // in-memory _programCache below still avoids re-fetching within a single
+  // page load.
+  const res = await fetch(PROGRAM_URL, { cache: "no-store" });
   if (!res.ok) throw new Error(`Failed to load program (${res.status})`);
   const raw = await res.json();
   _programCache = enrichProgram(raw);
