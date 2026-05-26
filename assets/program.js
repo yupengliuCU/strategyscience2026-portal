@@ -142,6 +142,36 @@ export function formatUploadTime(iso) {
   }).format(d);
 }
 
+/**
+ * Friendly filename for downloads, e.g. "S2C-2-Liu.pdf".
+ * Format: {sessionCode}-{positionInSession}-{firstAuthorLastName}.{ext}
+ *
+ * The R2 storage key still uses the stable internal id (slides/Pxxx.ext) so
+ * program data changes don't strand uploaded files. This name is only used
+ * for Content-Disposition when the file is served.
+ */
+export function friendlyFilename(paper, ext) {
+  const surname = firstAuthorSurname(paper && paper.authors);
+  const session = (paper && paper.sessionCode) || "Session";
+  const pos = (paper && paper.positionInSession) || "?";
+  return `${session}-${pos}-${surname}.${ext}`;
+}
+
+export function firstAuthorSurname(authors) {
+  if (!authors) return "Author";
+  const firstAuthor = String(authors).split(",")[0].trim();
+  if (!firstAuthor) return "Author";
+  // Last whitespace-separated token — handles "Georg von Krogh" -> "Krogh"
+  const lastWord = firstAuthor.split(/\s+/).pop() || "";
+  // Strip diacritics (Unicode combining marks U+0300–U+036F), then everything
+  // except letters and hyphens. So "Saint-Exupéry" -> "Saint-Exupery".
+  const ascii = lastWord
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-zA-Z-]/g, "");
+  return ascii || "Author";
+}
+
 export function formatBytes(b) {
   if (!Number.isFinite(b)) return "";
   if (b < 1024) return `${b} B`;

@@ -24,9 +24,16 @@ export async function onRequestGet({ params, env, request }) {
   const ext = (raw.split(".").pop() || "").toLowerCase();
   const contentType = EXT_TO_MIME[ext] || "application/octet-stream";
   const basename = raw.split("/").pop();
+
+  // Friendly download name passed by the client (e.g. "S2C-2-Liu.pdf").
+  // Falls back to the storage basename if missing. Sanitized to safe ASCII so
+  // browsers don't choke on weird characters.
+  const url = new URL(request.url);
+  const requested = url.searchParams.get("download") || basename;
+  const filename = requested.replace(/[^A-Za-z0-9._-]/g, "") || basename;
   const disposition = INLINE_EXTS.has(ext)
-    ? "inline"
-    : `attachment; filename="${basename.replace(/"/g, "")}"`;
+    ? `inline; filename="${filename}"`
+    : `attachment; filename="${filename}"`;
 
   const headers = new Headers();
   obj.writeHttpMetadata(headers);

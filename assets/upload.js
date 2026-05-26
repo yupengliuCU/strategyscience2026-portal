@@ -4,6 +4,7 @@ import {
   ROOMS,
   SESSION_TIMES,
   formatUploadTime,
+  friendlyFilename,
 } from "/assets/program.js";
 
 const MAX_BYTES = 100 * 1024 * 1024;
@@ -135,7 +136,7 @@ function renderUploadState(p, uploaded) {
   if (!uploaded) return "";
   return `
     <div class="upload-state" data-role="state">
-      <span class="filename">slides.${uploaded.ext}</span>
+      <span class="filename">${escapeHtml(friendlyFilename(p, uploaded.ext))}</span>
       uploaded ${formatUploadTime(uploaded.uploadedAt)}
     </div>
   `;

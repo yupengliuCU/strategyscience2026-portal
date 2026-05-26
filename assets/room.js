@@ -6,6 +6,7 @@ import {
   TRACK_LETTER,
   conferencePosition,
   denverDateTime,
+  friendlyFilename,
 } from "/assets/program.js";
 
 const state = {
@@ -147,7 +148,8 @@ function sessionStatus(time, nowHHMM) {
 function paperRow(p, n) {
   const uploaded = state.uploads[p.id];
   if (uploaded) {
-    const href = `/files/${uploaded.key}`;
+    const friendly = friendlyFilename(p, uploaded.ext);
+    const href = `/files/${uploaded.key}?download=${encodeURIComponent(friendly)}`;
     return `
       <li>
         <a class="paper-link" href="${href}" target="_blank" rel="noopener">
