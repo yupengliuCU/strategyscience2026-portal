@@ -223,12 +223,6 @@ a:hover { text-decoration-thickness: 2px; }
   color: var(--ink-soft);
   margin: 0;
 }
-.paper-inst {
-  font-size: 13px;
-  color: var(--ink-mute);
-  margin: 2px 0 0;
-  font-style: italic;
-}
 .paper-actions {
   display: flex;
   flex-direction: column;

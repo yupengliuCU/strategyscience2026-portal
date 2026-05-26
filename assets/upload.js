@@ -112,7 +112,6 @@ function paperCard(p) {
         <p class="paper-meta">${p.sessionCode} · paper ${p.positionInSession} of ${p.positionTotal} · ${p.id}</p>
         <h3 class="paper-title">${escapeHtml(p.title)}</h3>
         <p class="paper-authors">${escapeHtml(p.authors)}</p>
-        ${p.institution ? `<p class="paper-inst">${escapeHtml(p.institution)}</p>` : ""}
       </div>
       <div class="paper-actions">
         ${renderUploadState(p, uploaded)}
