@@ -109,7 +109,7 @@ function paperCard(p) {
   return `
     <article class="paper ${uploaded ? "is-uploaded" : ""}" data-paper="${p.id}">
       <div class="paper-body">
-        <p class="paper-meta">${p.sessionCode} · paper ${p.positionInSession} of ${p.positionTotal} · ${p.id}</p>
+        <p class="paper-meta">${p.sessionCode} · paper ${p.positionInSession} of ${p.positionTotal}</p>
         <h3 class="paper-title">${escapeHtml(p.title)}</h3>
         <p class="paper-authors">${escapeHtml(p.authors)}</p>
       </div>
@@ -159,7 +159,7 @@ function attachUploadHandlers(p) {
 
 async function handleDelete(paper, card) {
   const ok = window.confirm(
-    `Delete the uploaded slides for ${paper.id}?\n\n"${paper.title}"\n\nThis can't be undone, but you can upload again afterward.`,
+    `Delete the uploaded slides?\n\n"${paper.title}"\n\nThis can't be undone, but you can upload again afterward.`,
   );
   if (!ok) return;
 
@@ -184,7 +184,7 @@ async function handleDelete(paper, card) {
     }
     delete state.uploads[paper.id];
     replaceCard(paper);
-    toast(`Deleted slides for ${paper.id}`, "ok");
+    toast(`Deleted slides for ${paper.sessionCode} paper ${paper.positionInSession}`, "ok");
   } catch (err) {
     console.error(err);
     showError(errEl, err.message || "Delete failed. Try again.");
@@ -262,7 +262,7 @@ async function handleUpload(paper, file, card) {
       sizeBytes: file.size,
     };
     replaceCard(paper);
-    toast(`Uploaded slides for ${paper.id}`, "ok");
+    toast(`Uploaded slides for ${paper.sessionCode} paper ${paper.positionInSession}`, "ok");
   } catch (err) {
     console.error(err);
     showError(errEl, err.message || "Upload failed. Try again.");

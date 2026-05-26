@@ -6,6 +6,13 @@
 export const PROGRAM_URL =
   "https://raw.githubusercontent.com/yupengliuCU/strategyscience2026/main/deploy/data/program.json";
 
+// Papers to hide from the portal (e.g., presenter cancelled). The main program
+// data is maintained in the conference site repo; this is the portal's local
+// override so we don't have to wait for a content commit upstream.
+export const HIDDEN_PAPER_IDS = new Set([
+  "P094", // presenter cancelled, May 21
+]);
+
 // Hardcoded schedule (matches strategyscience2026.org).
 // Times are America/Denver wall-clock.
 export const SESSION_TIMES = {
@@ -45,19 +52,24 @@ export async function loadProgram() {
 
 function enrichProgram(raw) {
   const sessions = raw.sessions
-    .map((s) => ({
-      ...s,
-      code: roomCode(s.period, s.track),
-      roomLetter: letterFromTrack(s.track),
-      time: SESSION_TIMES[s.period],
-      papers: (raw.papers[s.id] || []).map((p, i) => ({
-        ...p,
-        sessionId: s.id,
-        sessionCode: roomCode(s.period, s.track),
-        positionInSession: i + 1,
-        positionTotal: raw.papers[s.id].length,
-      })),
-    }))
+    .map((s) => {
+      const visiblePapers = (raw.papers[s.id] || []).filter(
+        (p) => !HIDDEN_PAPER_IDS.has(p.id),
+      );
+      return {
+        ...s,
+        code: roomCode(s.period, s.track),
+        roomLetter: letterFromTrack(s.track),
+        time: SESSION_TIMES[s.period],
+        papers: visiblePapers.map((p, i) => ({
+          ...p,
+          sessionId: s.id,
+          sessionCode: roomCode(s.period, s.track),
+          positionInSession: i + 1,
+          positionTotal: visiblePapers.length,
+        })),
+      };
+    })
     .sort((a, b) => a.period - b.period || a.track - b.track);
 
   return { sessions };
