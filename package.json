@@ -2,8 +2,5 @@
   "name": "strategyscience2026-portal",
   "private": true,
   "version": "1.0.0",
-  "description": "Presenter portal for the 2026 Strategy Science Conference — slide uploads and room-side playback.",
-  "dependencies": {
-    "aws4fetch": "^1.0.20"
-  }
+  "description": "Presenter portal for the 2026 Strategy Science Conference — slide uploads and room-side playback."
 }

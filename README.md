@@ -26,12 +26,14 @@ Honor system. No login. No per-paper magic links.
 │   ├── _lib/
 │   │   └── constants.js    # Shared constants (allowed exts, MIME)
 │   ├── api/
-│   │   ├── upload-url.js   # POST: mint a presigned R2 PUT URL
-│   │   ├── finalize.js     # POST: after upload, clean up stale extensions
+│   │   ├── upload.js       # PUT: stream file body to R2 (proxy upload)
+│   │   ├── delete.js       # POST: delete slides/<paperId>.* from R2
 │   │   └── uploads.js      # GET:  list of all uploaded slides
-│   └── files/
-│       └── [[path]].js     # GET /files/slides/<id>.<ext>: stream from R2
-├── package.json            # Single dep: aws4fetch (V4 signing)
+│   ├── files/
+│   │   └── [[path]].js     # GET /files/slides/<id>.<ext>: stream from R2
+│   └── room/
+│       └── [[path]].js     # GET /room/<letter>: serve room.html (routing)
+├── package.json            # No runtime deps
 └── README.md
 ```
 
@@ -50,34 +52,12 @@ Claude can't reach the dashboard, so this is a manual step.
 1. **Cloudflare dashboard → R2 → Create bucket**
 2. Name: `ssc2026-slides` (or whatever — note the exact name; you'll need it later)
 3. Location hint: **North America (West)** — closer to Boulder.
-4. After creating, open the bucket → **Settings → CORS Policy → Edit**, and paste:
 
-   ```json
-   [
-     {
-       "AllowedOrigins": ["*"],
-       "AllowedMethods": ["PUT", "GET", "HEAD"],
-       "AllowedHeaders": ["*"],
-       "ExposeHeaders": ["ETag"],
-       "MaxAgeSeconds": 3600
-     }
-   ]
-   ```
+No CORS configuration needed — the browser only ever talks to
+`slides.strategyscience2026.org`; the Pages Function (running on the same
+edge) is what writes to R2 via the bucket binding.
 
-   `AllowedOrigins: ["*"]` is fine: uploads need a valid presigned signature, so
-   wide CORS doesn't expose anything new.
-
-### 2. Create an R2 API token
-
-1. **R2 → Manage R2 API tokens → Create API token**
-2. Permissions: **Object Read & Write**
-3. Apply to: **the bucket you just created** (not all buckets — narrower is safer)
-4. TTL: leave default (forever) or set an end date past June 2026
-5. Click **Create** and copy the **Access Key ID** and **Secret Access Key**.
-   You'll never see the secret again — save them somewhere temporary.
-6. Also note your **Account ID** (visible in the top-right of any Cloudflare page).
-
-### 3. Connect this repo to Cloudflare Pages
+### 2. Connect this repo to Cloudflare Pages
 
 1. **Pages → Create application → Connect to Git**
 2. Select the GitHub repo `yupengliuCU/strategyscience2026-portal`.
@@ -90,23 +70,20 @@ Claude can't reach the dashboard, so this is a manual step.
 9. Click **Save and Deploy**.
 10. Wait for the first build to finish.
 
-### 4. Add bindings and environment variables
+### 3. Add the R2 bucket binding
 
 1. After the first deploy: **your project → Settings → Functions → Bindings**.
 2. Add an **R2 bucket binding**:
    - Variable name: `SLIDES_BUCKET`
    - R2 bucket: select `ssc2026-slides`
    - Apply to: both **Production** and **Preview**
-3. Add four **Environment Variables** (under Settings → Environment variables; mark each as **Encrypted**):
-   - `R2_ACCOUNT_ID` → your Cloudflare Account ID
-   - `R2_ACCESS_KEY_ID` → the R2 token's Access Key ID
-   - `R2_SECRET_ACCESS_KEY` → the R2 token's Secret Access Key
-   - `R2_BUCKET_NAME` → `ssc2026-slides` (same name as the bucket)
-4. Apply each to both **Production** and **Preview**.
-5. Go to **Deployments**, click the latest one's `⋯` menu, and pick **Retry deployment**
-   so the Functions pick up the new bindings.
+3. Go to **Deployments**, click the latest one's `⋯` menu, and pick **Retry deployment**
+   so the Functions pick up the new binding.
 
-### 5. Hook up the subdomain
+No API tokens or environment variables are needed — the bucket binding gives
+Functions read/write access directly, without S3-style signing.
+
+### 4. Hook up the subdomain
 
 1. **DNS** for `strategyscience2026.org`: this should already live on Cloudflare since the main site is there.
 2. **Pages project → Custom domains → Set up a custom domain** → enter `slides.strategyscience2026.org`.
@@ -118,10 +95,9 @@ Claude can't reach the dashboard, so this is a manual step.
 
 1. Visit `https://slides.strategyscience2026.org/`. You should see the upload portal.
 2. Upload a small PDF for any paper. The card should flip to "uploaded".
-3. Visit `https://slides.strategyscience2026.org/room/A`. You should see Friday's sessions
-   (it'll say "Conference is not in session today" because we're before May 28 — that's expected).
-4. To force-check the room view on a non-conference day, append `?room=A` to `/room.html`
-   and visually inspect — `/room/A` won't render content outside conference dates by design.
+3. Visit `https://slides.strategyscience2026.org/room/A` through `/room/D`. Each should
+   show all sessions for that room across Friday and Saturday. The "NOW" highlight only
+   activates on May 29 or May 30; outside those dates, sessions render without it.
 
 ---
 
@@ -150,13 +126,10 @@ The user pushes from this machine, using a short-lived GitHub Personal Access To
 ## Local development (optional)
 
 ```bash
-npm install
-npx wrangler pages dev . --binding R2_ACCOUNT_ID=... \
-  --binding R2_ACCESS_KEY_ID=... --binding R2_SECRET_ACCESS_KEY=... \
-  --binding R2_BUCKET_NAME=... --r2 SLIDES_BUCKET=ssc2026-slides
+npx wrangler pages dev . --r2 SLIDES_BUCKET=ssc2026-slides
 ```
 
-Or put bindings in a `.dev.vars` file (gitignored). Easier to test by deploying to a Pages preview branch.
+Easier in practice: push to a feature branch — Cloudflare Pages auto-builds a preview URL.
 
 ---
 
@@ -165,12 +138,17 @@ Or put bindings in a `.dev.vars` file (gitignored). Easier to test by deploying 
 ### Upload flow
 
 1. Presenter picks a file in `/`.
-2. Browser → `POST /api/upload-url` with `{ paperId, filename }`.
-3. Pages Function signs an R2 S3 V4 PUT URL (1-hour expiry) using `aws4fetch`.
-4. Browser → `PUT` the file directly to R2 (bypasses Pages' 100MB body limit).
-5. Browser → `POST /api/finalize` with `{ paperId, ext }`.
-6. Pages Function deletes any `slides/<paperId>.*` whose extension differs from the
-   newly-uploaded one (so a `.pptx` cleanly replaces a `.pdf`).
+2. Browser → `PUT /api/upload?paperId=Pxxx&ext=pdf` with the file body.
+3. Pages Function streams the body into R2 via the `SLIDES_BUCKET` binding.
+4. Before writing, the function lists `slides/<paperId>.*` and deletes any
+   stale entries with a different extension, so a `.pptx` cleanly replaces a `.pdf`.
+5. Function returns `{ ok: true, key, ext }`; UI flips the card to "uploaded".
+
+We previously used presigned URLs (browser → R2 directly) to bypass the
+Workers 100 MiB request-body cap. That approach broke for users on CU's
+VPN, whose egress firewall RSTs connections to `*.r2.cloudflarestorage.com`.
+The proxy flow keeps all browser traffic on `slides.strategyscience2026.org`
+and still fits inside the 100 MiB ceiling that matches the UI's existing limit.
 
 ### Read flow (room view)
 
@@ -210,30 +188,30 @@ The room view uses the browser's wall clock, converted to America/Denver, to mar
 
 ## Troubleshooting
 
-**"Server not configured: R2_..."** — the env var isn't set on the Pages project, or
-the deployment was made before the env vars were added. Re-deploy after adding them.
+**"Server not configured: SLIDES_BUCKET binding missing"** — the R2 binding isn't
+attached to the Pages project, or the deployment was made before the binding was
+added. Add the binding (Settings → Functions → Bindings) and retry the deployment.
 
-**Upload starts but R2 PUT fails with CORS error** — the R2 bucket's CORS policy is
-either missing or doesn't allow your origin. See step 1 above.
+**"Network error during upload" / `ERR_CONNECTION_RESET`** — usually a network
+middleman (corporate VPN, school VPN, hotel WiFi) RSTing the connection. Have the
+presenter disconnect VPN and try again. The portal lives on
+`slides.strategyscience2026.org` and never touches `*.r2.cloudflarestorage.com`,
+which catches most of these cases.
 
-**Upload finishes but the card doesn't flip to "uploaded"** — `/api/finalize` failed.
-Check the function logs in Cloudflare → Pages → your project → Functions → Real-time logs.
+**A paper appears uploaded with the wrong file** — the presenter uploaded to the
+wrong card. Press **Delete** on that card to wipe the file, then have the right
+presenter upload to their own card.
 
-**Room view shows "Conference is not in session today"** — that's correct outside
-May 29 / 30. To preview, edit `assets/program.js` `conferencePosition()` temporarily, or
-test on a Friday / Saturday — the fallback uses day-of-week if you're not on the exact date.
-
-**A paper appears uploaded with the wrong file** — the presenter uploaded to the wrong
-paper card. To wipe: in R2 dashboard, find `slides/Pxxx.<ext>` and delete it. The card
-will revert next time `/api/uploads` is fetched.
+**Need to hide a paper (presenter cancelled)** — add their paper ID to
+`HIDDEN_PAPER_IDS` in `assets/program.js`, commit, push. The session's per-paper
+numbering renumbers automatically.
 
 ---
 
 ## Security notes
 
-- No authentication is intentional. The risk surface: someone guesses a `paperId` and
-  uploads a bogus file. They can't read other papers' data (no per-paper listing).
-- The R2 API token has write access only to this one bucket.
-- Env vars are stored encrypted in Cloudflare. Don't commit them.
-- After the conference: rotate the R2 API token, then delete the bucket if you want a
-  clean slate.
+- No authentication is intentional. Risk surface: someone with the right `paperId`
+  could upload or delete a bogus file. They can't read other papers' data (no
+  per-paper listing endpoint).
+- The R2 binding is scoped to this one bucket. No S3 API keys are stored anywhere.
+- After the conference: delete the bucket if you want a clean slate.

@@ -226,38 +226,18 @@ async function handleUpload(paper, file, card) {
   progressBar.style.width = "0%";
 
   try {
-    // 1. Get presigned URL
-    const signRes = await fetch("/api/upload-url", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ paperId: paper.id, filename: file.name }),
-    });
-    if (!signRes.ok) {
-      const body = await signRes.json().catch(() => ({}));
-      throw new Error(body.error || `Signing failed (${signRes.status})`);
-    }
-    const sign = await signRes.json();
-
-    // 2. PUT to R2 with progress
-    await putWithProgress(sign.uploadUrl, file, sign.headers, (pct) => {
+    // PUT the file straight to our own domain. The Pages Function streams it
+    // into R2 — keeps traffic inside Cloudflare's network and avoids
+    // r2.cloudflarestorage.com, which CU VPN's egress firewall blocks.
+    const uploadUrl = `/api/upload?paperId=${encodeURIComponent(paper.id)}&ext=${encodeURIComponent(ext)}`;
+    const result = await putWithProgress(uploadUrl, file, {}, (pct) => {
       progressBar.style.width = `${pct}%`;
     });
 
-    // 3. Finalize (clean up old extensions on server)
-    const finRes = await fetch("/api/finalize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ paperId: paper.id, ext: sign.ext }),
-    });
-    if (!finRes.ok) {
-      const body = await finRes.json().catch(() => ({}));
-      throw new Error(body.error || `Finalize failed (${finRes.status})`);
-    }
-
-    // 4. Update local state + re-render card
+    // Update local state + re-render card
     state.uploads[paper.id] = {
-      ext: sign.ext,
-      key: sign.key,
+      ext: result.ext || ext,
+      key: result.key || `slides/${paper.id}.${ext}`,
       uploadedAt: new Date().toISOString(),
       sizeBytes: file.size,
     };
@@ -298,9 +278,21 @@ function putWithProgress(url, file, headers, onProgress) {
     });
     xhr.addEventListener("load", () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        resolve();
+        let parsed = {};
+        try {
+          parsed = JSON.parse(xhr.responseText || "{}");
+        } catch {
+          /* upstream may not return JSON (e.g. R2 direct) — that's OK */
+        }
+        resolve(parsed);
       } else {
-        reject(new Error(`R2 PUT failed: ${xhr.status} ${xhr.statusText}`));
+        let serverMsg = "";
+        try {
+          serverMsg = (JSON.parse(xhr.responseText || "{}").error || "");
+        } catch {
+          /* ignore */
+        }
+        reject(new Error(serverMsg || `Upload failed: ${xhr.status} ${xhr.statusText}`));
       }
     });
     xhr.addEventListener("error", () => reject(new Error("Network error during upload")));
