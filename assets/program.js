@@ -6,6 +6,15 @@
 export const PROGRAM_URL =
   "https://raw.githubusercontent.com/yupengliuCU/strategyscience2026/main/deploy/data/program.json";
 
+// R2 Custom Domain ("Connect Domain") on the same Cloudflare zone as the
+// portal. Downloads from room views point here directly, bypassing the
+// Pages Function proxy. We had to switch because the on-campus CU VPN
+// kills response streams from slides.strategyscience2026.org for some
+// downloads. The r2.* subdomain — same TLS cert chain, same zone, but
+// fronted by R2 instead of Pages — isn't on whatever blocklist is tripping
+// the VPN.
+export const R2_PUBLIC_BASE = "https://r2.strategyscience2026.org";
+
 // Papers to hide from the portal (e.g., presenter cancelled). The main program
 // data is maintained in the conference site repo; this is the portal's local
 // override so we don't have to wait for a content commit upstream.

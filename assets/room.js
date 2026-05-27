@@ -7,6 +7,7 @@ import {
   conferencePosition,
   denverDateTime,
   friendlyFilename,
+  R2_PUBLIC_BASE,
 } from "/assets/program.js";
 
 const state = {
@@ -148,8 +149,11 @@ function sessionStatus(time, nowHHMM) {
 function paperRow(p, n) {
   const uploaded = state.uploads[p.id];
   if (uploaded) {
-    const friendly = friendlyFilename(p, uploaded.ext);
-    const href = `/files/${uploaded.key}?download=${encodeURIComponent(friendly)}`;
+    // Link directly to the R2 Custom Domain so VPN/firewall middleware that
+    // RSTs streams from the Pages Function path doesn't get a chance. The
+    // friendly filename is baked into the R2 object's Content-Disposition
+    // at upload time, so downloads still arrive as "S1C-4-Hall.pptx".
+    const href = `${R2_PUBLIC_BASE}/${uploaded.key}`;
     return `
       <li>
         <a class="paper-link" href="${href}" target="_blank" rel="noopener">

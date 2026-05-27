@@ -28,6 +28,7 @@ async function handle(request, env) {
   const url = new URL(request.url);
   const paperId = url.searchParams.get("paperId") || "";
   const ext = (url.searchParams.get("ext") || "").toLowerCase();
+  const rawName = url.searchParams.get("filename") || "";
 
   if (!PAPER_ID_RE.test(paperId)) {
     return jsonError(400, "Invalid paperId.");
@@ -35,6 +36,13 @@ async function handle(request, env) {
   if (!ALLOWED_EXTS.includes(ext)) {
     return jsonError(400, `Unsupported file type. Accepted: ${ALLOWED_EXTS.join(", ")}`);
   }
+
+  // Sanitize and pick the friendly download name. Falls back to paperId.ext
+  // if the client didn't supply one. Stored on the R2 object as
+  // Content-Disposition so direct r2.* downloads carry the right filename
+  // even though they bypass the Pages Function.
+  const safeName = rawName.replace(/[^A-Za-z0-9._-]/g, "");
+  const friendlyName = safeName || `${paperId}.${ext}`;
 
   // Defensive content-length check (Workers also enforces this at the edge).
   const declared = Number(request.headers.get("Content-Length") || 0);
@@ -56,7 +64,10 @@ async function handle(request, env) {
   }
 
   await env.SLIDES_BUCKET.put(keepKey, request.body, {
-    httpMetadata: { contentType: EXT_TO_MIME[ext] },
+    httpMetadata: {
+      contentType: EXT_TO_MIME[ext],
+      contentDisposition: `inline; filename="${friendlyName}"`,
+    },
   });
 
   return Response.json({

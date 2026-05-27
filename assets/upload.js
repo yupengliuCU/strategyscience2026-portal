@@ -230,7 +230,14 @@ async function handleUpload(paper, file, card) {
     // PUT the file straight to our own domain. The Pages Function streams it
     // into R2 — keeps traffic inside Cloudflare's network and avoids
     // r2.cloudflarestorage.com, which CU VPN's egress firewall blocks.
-    const uploadUrl = `/api/upload?paperId=${encodeURIComponent(paper.id)}&ext=${encodeURIComponent(ext)}`;
+    // We also pass the friendly download name so the server can stamp it as
+    // Content-Disposition on the R2 object — this is what gives downloads
+    // their nice S1C-4-Hall.pptx filename when served direct from r2.* later.
+    const friendly = friendlyFilename(paper, ext);
+    const uploadUrl =
+      `/api/upload?paperId=${encodeURIComponent(paper.id)}` +
+      `&ext=${encodeURIComponent(ext)}` +
+      `&filename=${encodeURIComponent(friendly)}`;
     const result = await putWithProgress(uploadUrl, file, {}, (pct) => {
       progressBar.style.width = `${pct}%`;
     });
